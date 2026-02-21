@@ -1,4 +1,4 @@
 package Repository;
 
-public class PasswordRespository {
+public class PasswordRepository {
 }
