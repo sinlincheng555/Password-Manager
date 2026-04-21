@@ -4,6 +4,8 @@ import Model.User;
 import Repository.PasswordRepository;
 import Until.Encryption;
 import Until.Validator;
+import java.util.List;
+import Model.SecureNote;
 
 public class PasswordController {
     private User user;
@@ -17,5 +19,18 @@ public class PasswordController {
         this.passwordRepository = passwordRepository;
         this.encryption = encryption;
         this.validator = validator;
+    }
+
+    public void addSecureNote(String title, String content) {
+        SecureNote note = new SecureNote(title, content);
+        passwordRepository.addSecureNote(note);
+    }
+
+    public List<SecureNote> getSecureNotes() {
+        return passwordRepository.getAllSecureNotes();
+    }
+
+    public void deleteSecureNote(SecureNote note) {
+        passwordRepository.deleteSecureNote(note);
     }
 }

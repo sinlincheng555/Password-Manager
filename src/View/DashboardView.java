@@ -6,16 +6,29 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import Controller.PasswordController;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import Model.SecureNote;
 
 public class DashboardView extends Application {
 
     private static PasswordController controller;
     private StackPane contentArea;
+
+    // In-memory note storage — lives as long as the dashboard window is open
+    private final ObservableList<SecureNote> noteItems = FXCollections.observableArrayList();
+
+    // No-arg constructor required by JavaFX Application
+    public DashboardView() {}
+
+    // Constructor that accepts a controller directly
+    public DashboardView(PasswordController c) {
+        controller = c;
+    }
 
     public static void setController(PasswordController c) {
         controller = c;
@@ -32,6 +45,7 @@ public class DashboardView extends Application {
 
         Button btnAccount       = sidebarButton("Account");
         Button btnPasswords     = sidebarButton("Passwords");
+        Button btnSecureNotes   = sidebarButton("Secure Notes");
         Button btnDeviceSync    = sidebarButton("Device Syncing");
         Button btnImportExport  = sidebarButton("Import/Export");
         Button btnSettings      = sidebarButton("Settings");
@@ -52,7 +66,7 @@ public class DashboardView extends Application {
         );
 
         sidebar.getChildren().addAll(
-                btnAccount, btnPasswords, btnDeviceSync,
+                btnAccount, btnPasswords, btnSecureNotes, btnDeviceSync,
                 btnImportExport, btnSettings,
                 spacer, btnLogout
         );
@@ -67,6 +81,7 @@ public class DashboardView extends Application {
         // Button actions
         btnAccount.setOnAction(e -> showAccountPanel());
         btnPasswords.setOnAction(e -> showPasswordsPanel());
+        btnSecureNotes.setOnAction(e -> showSecureNotesPanel());
         btnDeviceSync.setOnAction(e -> showDeviceSyncPanel());
         btnImportExport.setOnAction(e -> showImportExportPanel());
         btnSettings.setOnAction(e -> showSettingsPanel());
@@ -263,6 +278,137 @@ public class DashboardView extends Application {
 
         panel.getChildren().addAll(panelTitle("Passwords"), addRow, table);
         contentArea.getChildren().setAll(panel);
+    }
+
+    // SECURE NOTES panel
+    private void showSecureNotesPanel() {
+
+        // ── outer wrapper fills the StackPane ─────────────────────────
+        VBox wrapper = new VBox(14);
+        wrapper.setPadding(new Insets(30, 40, 30, 40));
+        wrapper.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+        wrapper.getChildren().add(panelTitle("Secure Notes"));
+
+        // ── body: LEFT editor | RIGHT list ────────────────────────────
+        HBox body = new HBox(20);
+        VBox.setVgrow(body, Priority.ALWAYS);
+
+        // ── LEFT ──────────────────────────────────────────────────────
+        VBox leftPane = new VBox(10);
+        HBox.setHgrow(leftPane, Priority.ALWAYS);
+
+        TextField titleField = darkField("Note title");
+        titleField.setMaxWidth(Double.MAX_VALUE);
+
+        TextArea noteContent = new TextArea();
+        noteContent.setPromptText("Write your note here...");
+        noteContent.setWrapText(true);
+        noteContent.setStyle(
+                "-fx-control-inner-background: #2b2b2b;" +
+                        "-fx-background-color: #2b2b2b;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-prompt-text-fill: #aaa;" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-font-style: italic;" +
+                        "-fx-background-radius: 4;" +
+                        "-fx-padding: 8 12 8 12;"
+        );
+        VBox.setVgrow(noteContent, Priority.ALWAYS);
+
+        Button saveBtn   = redButton("Save Note");
+        Button deleteBtn = redButton("Delete Note");
+        HBox btnRow = new HBox(10, saveBtn, deleteBtn);
+
+        leftPane.getChildren().addAll(
+                fieldLabel("Title:"), titleField,
+                fieldLabel("Content:"), noteContent,
+                btnRow
+        );
+
+        // ── RIGHT ─────────────────────────────────────────────────────
+        VBox rightPane = new VBox(8);
+        rightPane.setPrefWidth(200);
+        rightPane.setMinWidth(160);
+
+        Label listHeader = new Label("Secure Notes");
+        listHeader.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        listHeader.setStyle("-fx-text-fill: white;");
+
+        // noteItems is an instance field — persists while dashboard is open
+        ListView<SecureNote> noteList = new ListView<>(noteItems);
+        noteList.setStyle(
+                "-fx-background-color: #2b2b2b;" +
+                        "-fx-background-radius: 4;"
+        );
+        noteList.setCellFactory(lv -> new ListCell<SecureNote>() {
+            @Override
+            protected void updateItem(SecureNote item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item.getTitle());
+                    setStyle(
+                            "-fx-background-color: transparent;" +
+                                    "-fx-text-fill: white;" +
+                                    "-fx-font-size: 13px;"
+                    );
+                }
+            }
+        });
+        VBox.setVgrow(noteList, Priority.ALWAYS);
+
+        rightPane.getChildren().addAll(listHeader, noteList);
+
+        body.getChildren().addAll(leftPane, rightPane);
+        wrapper.getChildren().add(body);
+        contentArea.getChildren().setAll(wrapper);
+
+        // ── track which note is being edited ──────────────────────────
+        final SecureNote[] editing = {null};
+
+        // Clicking a title loads it into the editor
+        noteList.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
+            if (selected != null) {
+                editing[0] = selected;
+                titleField.setText(selected.getTitle());
+                noteContent.setText(selected.getContent());
+            }
+        });
+
+        // Save button — no controller needed, writes straight to noteItems
+        saveBtn.setOnAction(e -> {
+            String title   = titleField.getText().trim();
+            String content = noteContent.getText().trim();
+            if (title.isEmpty() || content.isEmpty()) return;
+
+            if (editing[0] != null) {
+                // update the existing note in-place
+                editing[0].setContent(content);
+                // force ListView to refresh
+                noteList.refresh();
+            } else {
+                // brand-new note
+                noteItems.add(new SecureNote(title, content));
+            }
+
+            titleField.clear();
+            noteContent.clear();
+            editing[0] = null;
+            noteList.getSelectionModel().clearSelection();
+        });
+
+        // Delete button — removes selected note from noteItems
+        deleteBtn.setOnAction(e -> {
+            SecureNote selected = noteList.getSelectionModel().getSelectedItem();
+            if (selected == null) return;
+            noteItems.remove(selected);
+            titleField.clear();
+            noteContent.clear();
+            editing[0] = null;
+        });
     }
 
     //  DEVICE SYNCING panel

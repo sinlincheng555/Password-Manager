@@ -10,10 +10,12 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import Controller.PasswordController;
+import View.DashboardView;
 
 public class LoginView extends Application {
 
     public static PasswordController controller;
+
     public static void setController(PasswordController c) {
         controller = c;
     }
@@ -26,13 +28,13 @@ public class LoginView extends Application {
         root.setStyle("-fx-background-color: linear-gradient(to bottom right, #e07b39, #c0392b);");
         root.setPadding(new Insets(50));
 
-        // Title - Password Manager at top center
+        // Title
         Label titleLabel = new Label("Password Manager");
         titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 32));
         titleLabel.setStyle("-fx-text-fill: white;");
         titleLabel.setAlignment(Pos.CENTER);
 
-        // Form container (no white background)
+        // Form container
         VBox formBox = new VBox(20);
         formBox.setAlignment(Pos.CENTER);
         formBox.setPadding(new Insets(40, 50, 40, 50));
@@ -66,7 +68,12 @@ public class LoginView extends Application {
         confirmField.setPrefHeight(40);
         confirmField.setStyle("-fx-font-size: 14; -fx-padding: 8;");
 
-        // Buttons with #3a3a3a background
+        // Status label for feedback
+        Label statusLabel = new Label("");
+        statusLabel.setStyle("-fx-text-fill: white; -fx-font-size: 12;");
+        statusLabel.setAlignment(Pos.CENTER);
+
+        // Buttons
         Button loginButton = new Button("Login");
         loginButton.setPrefWidth(180);
         loginButton.setPrefHeight(40);
@@ -91,52 +98,75 @@ public class LoginView extends Application {
                         "-fx-cursor: hand;"
         );
 
-        // Hover effects for buttons
+        // Hover effects
         loginButton.setOnMouseEntered(e ->
                 loginButton.setStyle(
-                        "-fx-background-color: #2a2a2a; " +
-                                "-fx-text-fill: white; " +
-                                "-fx-font-weight: bold; " +
-                                "-fx-font-size: 14; " +
-                                "-fx-background-radius: 5; " +
-                                "-fx-cursor: hand;"
+                        "-fx-background-color: #2a2a2a; -fx-text-fill: white; " +
+                                "-fx-font-weight: bold; -fx-font-size: 14; " +
+                                "-fx-background-radius: 5; -fx-cursor: hand;"
                 )
         );
         loginButton.setOnMouseExited(e ->
                 loginButton.setStyle(
-                        "-fx-background-color: #3a3a3a; " +
-                                "-fx-text-fill: white; " +
-                                "-fx-font-weight: bold; " +
-                                "-fx-font-size: 14; " +
-                                "-fx-background-radius: 5; " +
-                                "-fx-cursor: hand;"
+                        "-fx-background-color: #3a3a3a; -fx-text-fill: white; " +
+                                "-fx-font-weight: bold; -fx-font-size: 14; " +
+                                "-fx-background-radius: 5; -fx-cursor: hand;"
                 )
         );
 
         registerButton.setOnMouseEntered(e ->
                 registerButton.setStyle(
-                        "-fx-background-color: #2a2a2a; " +
-                                "-fx-text-fill: white; " +
-                                "-fx-font-weight: bold; " +
-                                "-fx-font-size: 14; " +
-                                "-fx-background-radius: 5; " +
-                                "-fx-cursor: hand;"
+                        "-fx-background-color: #2a2a2a; -fx-text-fill: white; " +
+                                "-fx-font-weight: bold; -fx-font-size: 14; " +
+                                "-fx-background-radius: 5; -fx-cursor: hand;"
                 )
         );
         registerButton.setOnMouseExited(e ->
                 registerButton.setStyle(
-                        "-fx-background-color: #3a3a3a; " +
-                                "-fx-text-fill: white; " +
-                                "-fx-font-weight: bold; " +
-                                "-fx-font-size: 14; " +
-                                "-fx-background-radius: 5; " +
-                                "-fx-cursor: hand;"
+                        "-fx-background-color: #3a3a3a; -fx-text-fill: white; " +
+                                "-fx-font-weight: bold; -fx-font-size: 14; " +
+                                "-fx-background-radius: 5; -fx-cursor: hand;"
                 )
         );
 
-        // Buttons row
-        HBox buttonBox = new HBox(20, loginButton, registerButton);
-        buttonBox.setAlignment(Pos.CENTER);
+        // ── Login action: validate then open Dashboard ──────────────────
+        loginButton.setOnAction(e -> {
+            String username = usernameField.getText().trim();
+            String password = passwordField.getText();
+
+            if (username.isEmpty() || password.isEmpty()) {
+                statusLabel.setText("Please enter username and password.");
+                return;
+            }
+
+            // Open dashboard — pass controller directly via constructor
+            Stage dashStage = new Stage();
+            DashboardView dashboard = new DashboardView(controller);
+            try {
+                dashboard.start(dashStage);
+                stage.close();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                statusLabel.setText("Failed to open dashboard.");
+            }
+        });
+
+        // ── Register action: basic validation ──────────────────────────
+        registerButton.setOnAction(e -> {
+            String username = usernameField.getText().trim();
+            String password = passwordField.getText();
+            String confirm  = confirmField.getText();
+
+            if (username.isEmpty() || password.isEmpty()) {
+                statusLabel.setText("Username and password cannot be empty.");
+                return;
+            }
+            if (!password.equals(confirm)) {
+                statusLabel.setText("Passwords do not match.");
+                return;
+            }
+            statusLabel.setText("Registered successfully! You can now log in.");
+        });
 
         // Forgot password link
         Label forgotLabel = new Label("Forgot Username / Password?");
@@ -151,29 +181,30 @@ public class LoginView extends Application {
         forgotLabel.setOnMouseExited(e ->
                 forgotLabel.setStyle("-fx-text-fill: rgba(255, 255, 255, 0.7);")
         );
+        forgotLabel.setOnMouseClicked(e ->
+                statusLabel.setText("Please contact support to reset your credentials.")
+        );
 
-        forgotLabel.setOnMouseClicked(e -> {
-            System.out.println("Forgot Username/Password clicked");
-        });
+        // Buttons row
+        HBox buttonBox = new HBox(20, loginButton, registerButton);
+        buttonBox.setAlignment(Pos.CENTER);
 
-        // Add all elements to form box
+        // Assemble form
         formBox.getChildren().addAll(
                 usernameLabel, usernameField,
                 passwordLabel, passwordField,
                 confirmLabel, confirmField,
                 buttonBox,
+                statusLabel,
                 forgotLabel
         );
 
-        // Add spacing between form elements
         VBox.setMargin(forgotLabel, new Insets(10, 0, 0, 0));
 
-        // Add title and form to root with spacing
         root.getChildren().addAll(titleLabel, formBox);
         VBox.setMargin(titleLabel, new Insets(60, 0, 40, 0));
         VBox.setMargin(formBox, new Insets(0, 0, 60, 0));
 
-        // Scene
         Scene scene = new Scene(root, 550, 650);
         stage.setTitle("Password Manager");
         stage.setScene(scene);
