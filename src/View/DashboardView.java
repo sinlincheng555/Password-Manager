@@ -6,12 +6,18 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import Controller.PasswordController;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
+import Until.Encryption;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import Model.SecureNote;
 
 public class DashboardView extends Application {
@@ -19,7 +25,11 @@ public class DashboardView extends Application {
     private static PasswordController controller;
     private StackPane contentArea;
 
-    // In-memory note storage — lives as long as the dashboard window is open
+    // Passwords panel — persists across re-opens of the panel
+    private final ObservableList<PasswordEntry> masterData = FXCollections.observableArrayList();
+    private final Encryption encryption = new Encryption();
+
+    // Secure Notes panel — persists while dashboard is open
     private final ObservableList<SecureNote> noteItems = FXCollections.observableArrayList();
 
     // No-arg constructor required by JavaFX Application
@@ -37,20 +47,19 @@ public class DashboardView extends Application {
     @Override
     public void start(Stage stage) {
 
-        //  Sidebar
+        // ── Sidebar ───────────────────────────────────────────────────
         VBox sidebar = new VBox(12);
         sidebar.setPrefWidth(220);
         sidebar.setPadding(new Insets(20, 14, 20, 14));
         sidebar.setStyle("-fx-background-color: #3a3a3a;");
 
-        Button btnAccount       = sidebarButton("Account");
-        Button btnPasswords     = sidebarButton("Passwords");
-        Button btnSecureNotes   = sidebarButton("Secure Notes");
-        Button btnDeviceSync    = sidebarButton("Device Syncing");
-        Button btnImportExport  = sidebarButton("Import/Export");
-        Button btnSettings      = sidebarButton("Settings");
+        Button btnAccount      = sidebarButton("Account");
+        Button btnPasswords    = sidebarButton("Passwords");
+        Button btnSecureNotes  = sidebarButton("Secure Notes");
+        Button btnDeviceSync   = sidebarButton("Device Syncing");
+        Button btnImportExport = sidebarButton("Import/Export");
+        Button btnSettings     = sidebarButton("Settings");
 
-        // Spacer pushes logout to bottom
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
@@ -71,7 +80,7 @@ public class DashboardView extends Application {
                 spacer, btnLogout
         );
 
-        //  Content area
+        // ── Content area ──────────────────────────────────────────────
         contentArea = new StackPane();
         contentArea.setStyle(
                 "-fx-background-color: linear-gradient(to bottom right, #e07b39, #c0392b);"
@@ -87,7 +96,7 @@ public class DashboardView extends Application {
         btnSettings.setOnAction(e -> showSettingsPanel());
         btnLogout.setOnAction(e -> stage.close());
 
-        //  Root
+        // ── Root ──────────────────────────────────────────────────────
         HBox root = new HBox();
         HBox.setHgrow(contentArea, Priority.ALWAYS);
         root.getChildren().addAll(sidebar, contentArea);
@@ -100,7 +109,7 @@ public class DashboardView extends Application {
         stage.show();
     }
 
-    //  Sidebar button style
+    // ── Sidebar button style ──────────────────────────────────────────
     private Button sidebarButton(String text) {
         Button btn = new Button(text);
         btn.setPrefWidth(Double.MAX_VALUE);
@@ -127,7 +136,7 @@ public class DashboardView extends Application {
         return btn;
     }
 
-    //  Content label helper
+    // ── Label helpers ─────────────────────────────────────────────────
     private Label panelTitle(String text) {
         Label l = new Label(text);
         l.setFont(Font.font("Arial", FontWeight.BOLD, 26));
@@ -142,6 +151,7 @@ public class DashboardView extends Application {
         return l;
     }
 
+    // ── Field helpers ─────────────────────────────────────────────────
     private TextField darkField(String prompt) {
         TextField f = new TextField();
         f.setPromptText(prompt);
@@ -170,6 +180,7 @@ public class DashboardView extends Application {
         return f;
     }
 
+    // ── Button helpers ────────────────────────────────────────────────
     private Button redButton(String text) {
         Button b = new Button(text);
         b.setFont(Font.font("Arial", FontWeight.BOLD, 12));
@@ -195,7 +206,7 @@ public class DashboardView extends Application {
         return b;
     }
 
-    //  ACCOUNT panel
+    // ── ACCOUNT panel ─────────────────────────────────────────────────
     private void showAccountPanel() {
         VBox panel = new VBox(14);
         panel.setPadding(new Insets(30, 40, 30, 40));
@@ -218,8 +229,8 @@ public class DashboardView extends Application {
                 new VBox(6, fieldLabel("Phone number:"), phoneField)
         );
 
-        Button linkBtn     = redButton("LINK?");
-        Button genPassBtn  = redButton("Generate secure password");
+        Button linkBtn    = redButton("LINK?");
+        Button genPassBtn = redButton("Generate secure password");
         HBox twoFARow = new HBox(12, linkBtn, genPassBtn);
 
         Button confirmBtn = darkButton("Confirm Changes");
@@ -246,26 +257,58 @@ public class DashboardView extends Application {
         contentArea.getChildren().setAll(panel);
     }
 
-    // PASSWORDS panel
+    // ── PASSWORDS panel (with search, filter/sort, show/hide, copy, edit, delete, encryption) ──
     private void showPasswordsPanel() {
         VBox panel = new VBox(16);
         panel.setPadding(new Insets(30, 40, 30, 40));
 
-        TextField siteField = darkField("Site / App name");
-        siteField.setPrefWidth(200);
-        TextField userField = darkField("Username");
-        userField.setPrefWidth(200);
-        PasswordField passField = darkPassField("Password");
-        passField.setPrefWidth(200);
-        Button addBtn = redButton("Add");
+        // Search field
+        TextField searchField = darkField("Search passwords...");
 
-        HBox addRow = new HBox(12, siteField, userField, passField, addBtn);
+        // Add-entry fields
+        TextField siteField   = darkField("Site / App name");
+        TextField userField   = darkField("Username");
+        PasswordField passField = darkPassField("Password");
+        TextField passVisible = darkField("Password");
+        passVisible.setVisible(false);
+
+        passField.managedProperty().bind(passField.visibleProperty());
+        passVisible.managedProperty().bind(passVisible.visibleProperty());
+
+        Button toggleBtn = darkButton("Show");
+        toggleBtn.setOnAction(e -> {
+            boolean show = !passVisible.isVisible();
+            if (show) {
+                passVisible.setText(passField.getText());
+            } else {
+                passField.setText(passVisible.getText());
+            }
+            passVisible.setVisible(show);
+            passField.setVisible(!show);
+            toggleBtn.setText(show ? "Hide" : "Show");
+        });
+
+        Button addBtn = redButton("Add");
+        HBox addRow = new HBox(12, siteField, userField, passField, passVisible, toggleBtn, addBtn);
         addRow.setAlignment(Pos.CENTER_LEFT);
 
-        TableView<DashboardView.PasswordEntry> table = new TableView<>();
-        table.setStyle("-fx-background-color: #2b2b2b; -fx-text-fill: white;");
+        // Filter & sort
+        FilteredList<PasswordEntry> filteredData = new FilteredList<>(masterData, p -> true);
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            filteredData.setPredicate(entry -> {
+                if (newVal == null || newVal.isEmpty()) return true;
+                String lowerFilter = newVal.toLowerCase();
+                return entry.site.get().toLowerCase().contains(lowerFilter) ||
+                        entry.username.get().toLowerCase().contains(lowerFilter);
+            });
+        });
+
+        SortedList<PasswordEntry> sortedData = new SortedList<>(filteredData);
+        TableView<PasswordEntry> table = new TableView<>(sortedData);
+        sortedData.comparatorProperty().bind(table.comparatorProperty());
+
+        table.setStyle("-fx-background-color: #2b2b2b;");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.setPlaceholder(new Label("No passwords saved yet."));
         VBox.setVgrow(table, Priority.ALWAYS);
 
         TableColumn<PasswordEntry, String> siteCol = new TableColumn<>("Site");
@@ -274,27 +317,97 @@ public class DashboardView extends Application {
         userCol.setCellValueFactory(d -> d.getValue().username);
         TableColumn<PasswordEntry, String> passCol = new TableColumn<>("Password");
         passCol.setCellValueFactory(d -> d.getValue().password);
-        table.getColumns().addAll(siteCol, userCol, passCol);
 
-        panel.getChildren().addAll(panelTitle("Passwords"), addRow, table);
+        // Action buttons: Copy / Edit / Delete
+        TableColumn<PasswordEntry, Void> actionCol = new TableColumn<>("Actions");
+        actionCol.setCellFactory(param -> new TableCell<>() {
+            private final Button editBtn = new Button("Edit");
+            private final Button delBtn  = new Button("Delete");
+            private final Button copyBtn = new Button("Copy");
+            private final HBox container = new HBox(8, copyBtn, editBtn, delBtn);
+            {
+                copyBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 10px;");
+                editBtn.setStyle("-fx-background-color: #3a3a3a; -fx-text-fill: white; -fx-font-size: 10px;");
+                delBtn.setStyle("-fx-background-color: #c0392b; -fx-text-fill: white; -fx-font-size: 10px;");
+                container.setAlignment(Pos.CENTER);
+
+                copyBtn.setOnAction(e -> {
+                    PasswordEntry item = getTableView().getItems().get(getIndex());
+                    String plainPassword = encryption.decrypt(item.password.get());
+                    final Clipboard clipboard = Clipboard.getSystemClipboard();
+                    final ClipboardContent content = new ClipboardContent();
+                    content.putString(plainPassword);
+                    clipboard.setContent(content);
+                    copyBtn.setText("Copied!");
+                    new java.util.Timer().schedule(new java.util.TimerTask() {
+                        @Override public void run() {
+                            javafx.application.Platform.runLater(() -> copyBtn.setText("Copy"));
+                        }
+                    }, 2000);
+                });
+
+                delBtn.setOnAction(e -> masterData.remove(getTableView().getItems().get(getIndex())));
+
+                editBtn.setOnAction(e -> {
+                    PasswordEntry item = getTableView().getItems().get(getIndex());
+                    siteField.setText(item.site.get());
+                    userField.setText(item.username.get());
+                    passField.setText(encryption.decrypt(item.password.get()));
+                    masterData.remove(item);
+                });
+            }
+            @Override protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : container);
+            }
+        });
+
+        table.getColumns().addAll(siteCol, userCol, passCol, actionCol);
+
+        // Add action — validates fields, encrypts password, stores entry
+        addBtn.setOnAction(e -> {
+            String pwd = passVisible.isVisible() ? passVisible.getText() : passField.getText();
+
+            if (siteField.getText().isEmpty()) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Please enter site name");
+                a.show();
+            } else if (userField.getText().isEmpty()) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Please enter username");
+                a.show();
+            } else if (pwd.isEmpty()) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Please enter password");
+                a.show();
+            } else {
+                String encrypted = encryption.encrypt(pwd);
+                masterData.add(new PasswordEntry(siteField.getText(), userField.getText(), encrypted));
+                siteField.clear();
+                userField.clear();
+                passField.clear();
+                passVisible.clear();
+            }
+        });
+
+        panel.getChildren().addAll(panelTitle("Passwords"), fieldLabel("Search:"), searchField, addRow, table);
         contentArea.getChildren().setAll(panel);
     }
 
-    // SECURE NOTES panel
+    // ── SECURE NOTES panel ────────────────────────────────────────────
     private void showSecureNotesPanel() {
 
-        // ── outer wrapper fills the StackPane ─────────────────────────
         VBox wrapper = new VBox(14);
         wrapper.setPadding(new Insets(30, 40, 30, 40));
         wrapper.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
         wrapper.getChildren().add(panelTitle("Secure Notes"));
 
-        // ── body: LEFT editor | RIGHT list ────────────────────────────
+        // Body: LEFT editor | RIGHT list
         HBox body = new HBox(20);
         VBox.setVgrow(body, Priority.ALWAYS);
 
-        // ── LEFT ──────────────────────────────────────────────────────
+        // LEFT — editor
         VBox leftPane = new VBox(10);
         HBox.setHgrow(leftPane, Priority.ALWAYS);
 
@@ -326,7 +439,7 @@ public class DashboardView extends Application {
                 btnRow
         );
 
-        // ── RIGHT ─────────────────────────────────────────────────────
+        // RIGHT — list
         VBox rightPane = new VBox(8);
         rightPane.setPrefWidth(200);
         rightPane.setMinWidth(160);
@@ -335,7 +448,6 @@ public class DashboardView extends Application {
         listHeader.setFont(Font.font("Arial", FontWeight.BOLD, 14));
         listHeader.setStyle("-fx-text-fill: white;");
 
-        // noteItems is an instance field — persists while dashboard is open
         ListView<SecureNote> noteList = new ListView<>(noteItems);
         noteList.setStyle(
                 "-fx-background-color: #2b2b2b;" +
@@ -361,15 +473,13 @@ public class DashboardView extends Application {
         VBox.setVgrow(noteList, Priority.ALWAYS);
 
         rightPane.getChildren().addAll(listHeader, noteList);
-
         body.getChildren().addAll(leftPane, rightPane);
         wrapper.getChildren().add(body);
         contentArea.getChildren().setAll(wrapper);
 
-        // ── track which note is being edited ──────────────────────────
+        // Track which note is being edited
         final SecureNote[] editing = {null};
 
-        // Clicking a title loads it into the editor
         noteList.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null) {
                 editing[0] = selected;
@@ -378,19 +488,15 @@ public class DashboardView extends Application {
             }
         });
 
-        // Save button — no controller needed, writes straight to noteItems
         saveBtn.setOnAction(e -> {
             String title   = titleField.getText().trim();
             String content = noteContent.getText().trim();
             if (title.isEmpty() || content.isEmpty()) return;
 
             if (editing[0] != null) {
-                // update the existing note in-place
                 editing[0].setContent(content);
-                // force ListView to refresh
                 noteList.refresh();
             } else {
-                // brand-new note
                 noteItems.add(new SecureNote(title, content));
             }
 
@@ -400,7 +506,6 @@ public class DashboardView extends Application {
             noteList.getSelectionModel().clearSelection();
         });
 
-        // Delete button — removes selected note from noteItems
         deleteBtn.setOnAction(e -> {
             SecureNote selected = noteList.getSelectionModel().getSelectedItem();
             if (selected == null) return;
@@ -411,7 +516,7 @@ public class DashboardView extends Application {
         });
     }
 
-    //  DEVICE SYNCING panel
+    // ── DEVICE SYNCING panel ──────────────────────────────────────────
     private void showDeviceSyncPanel() {
         VBox panel = new VBox(16);
         panel.setPadding(new Insets(30, 40, 30, 40));
@@ -428,7 +533,7 @@ public class DashboardView extends Application {
         contentArea.getChildren().setAll(panel);
     }
 
-    // IMPORT / EXPORT panel
+    // ── IMPORT / EXPORT panel ─────────────────────────────────────────
     private void showImportExportPanel() {
         VBox panel = new VBox(16);
         panel.setPadding(new Insets(30, 40, 30, 40));
@@ -444,14 +549,14 @@ public class DashboardView extends Application {
         contentArea.getChildren().setAll(panel);
     }
 
-    //  SETTINGS panel
+    // ── SETTINGS panel ────────────────────────────────────────────────
     private void showSettingsPanel() {
         VBox panel = new VBox(16);
         panel.setPadding(new Insets(30, 40, 30, 40));
 
-        CheckBox darkMode  = new CheckBox("Dark Mode");
-        CheckBox autoLock  = new CheckBox("Auto-lock after 5 minutes");
-        CheckBox showPass  = new CheckBox("Show passwords by default");
+        CheckBox darkMode = new CheckBox("Dark Mode");
+        CheckBox autoLock = new CheckBox("Auto-lock after 5 minutes");
+        CheckBox showPass = new CheckBox("Show passwords by default");
         for (CheckBox cb : new CheckBox[]{darkMode, autoLock, showPass}) {
             cb.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
         }
@@ -462,7 +567,7 @@ public class DashboardView extends Application {
         contentArea.getChildren().setAll(panel);
     }
 
-    // Password entry model
+    // ── Password entry model ──────────────────────────────────────────
     public static class PasswordEntry {
         public javafx.beans.property.SimpleStringProperty site;
         public javafx.beans.property.SimpleStringProperty username;
