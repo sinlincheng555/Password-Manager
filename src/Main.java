@@ -1,5 +1,6 @@
 import Model.User;
 import Repository.PasswordRepository;
+import Repository.UserRepository;
 import Controller.PasswordController;
 import Until.Validator;
 import Until.Encryption;
@@ -10,26 +11,24 @@ import javafx.application.Application;
 public class Main {
     public static void main(String[] args) {
 
-        // --- Model ---
-        User user = new User();
-
         // --- Util ---
         Encryption encryption = new Encryption();
         Validator  validator  = new Validator();
 
-        // --- Repository ---
+        // --- Repositories ---
+        UserRepository     userRepository     = new UserRepository();
         PasswordRepository passwordRepository = new PasswordRepository();
-
         // --- Controller ---
         PasswordController passwordController = new PasswordController(
-                user,
+                new User(),
                 passwordRepository,
                 encryption,
                 validator
         );
 
-        // --- View (JavaFX launch) ---
+        // --- Launch ---
         LoginView.setController(passwordController);
+        LoginView.setDependencies(userRepository, encryption);
         Application.launch(LoginView.class, args);
     }
 }

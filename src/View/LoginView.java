@@ -10,6 +10,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import Controller.PasswordController;
+import Repository.UserRepository;
 import Until.Encryption;
 
 public class LoginView extends Application {
@@ -21,15 +22,22 @@ public class LoginView extends Application {
     private TextField     confirmVisible;
 
     public static PasswordController controller;
+    private static UserRepository     userRepository;
     private static Encryption         encryption;
 
     public static void setController(PasswordController c) {
         controller = c;
     }
 
+    public static void setDependencies(UserRepository repo, Encryption enc) {
+        userRepository = repo;
+        encryption     = enc;
+    }
+
     @Override
     public void start(Stage stage) {
 
+        if (userRepository == null) userRepository = new UserRepository();
         if (encryption     == null) encryption     = new Encryption();
 
         // ── Root ──────────────────────────────────────────────────────
@@ -130,7 +138,7 @@ public class LoginView extends Application {
         stage.show();
     }
 
-    // ── Login: pass plain password — UserRepository hashes internally ─
+    // ── Login ─────────────────────────────────────────────────────────
     private void handleLogin(Stage stage) {
         String username = usernameField.getText().trim();
         String password = getActivePassword(passwordField, passwordVisible);
@@ -138,6 +146,13 @@ public class LoginView extends Application {
         if (username.isEmpty()) { warn("Please enter your username."); return; }
         if (password.isEmpty()) { warn("Please enter your password."); return; }
 
+        // loginUser returns a User object — null means invalid credentials
+        var user = userRepository.loginUser(username, password);
+
+        if (user == null) {
+            warn("Invalid username or password. Please try again.");
+            return;
+        }
         try {
             DashboardView dashboard = new DashboardView(controller);
             dashboard.start(new Stage());
@@ -148,18 +163,31 @@ public class LoginView extends Application {
         }
     }
 
-    // ── Register: pass plain password — UserRepository hashes internally ─
+    // ── Register ──────────────────────────────────────────────────────
     private void handleRegister() {
         String username = usernameField.getText().trim();
         String password = getActivePassword(passwordField, passwordVisible);
         String confirm  = getActivePassword(confirmField,  confirmVisible);
 
-        if (username.isEmpty())              { warn("Please enter a username.");                    return; }
-        if (password.isEmpty())              { warn("Please enter a password.");                    return; }
-        if (confirm.isEmpty())               { warn("Please confirm your password.");               return; }
-        if (!password.equals(confirm))       { warn("Passwords do not match.");                    return; }
-        if (password.length() < 8)           { warn("Password must be at least 8 characters.");   return; }
+        if (username.isEmpty())        { warn("Please enter a username.");                  return; }
+        if (password.isEmpty())        { warn("Please enter a password.");                  return; }
+        if (confirm.isEmpty())         { warn("Please confirm your password.");             return; }
+        if (!password.equals(confirm)) { warn("Passwords do not match.");                   return; }
+        if (password.length() < 8)     { warn("Password must be at least 8 characters.");   return; }
 
+        // Check duplicate before attempting to register
+        if (userRepository.usernameExists(username)) {
+            warn("Username \"" + username + "\" is already taken.");
+            return;
+        }
+        // UserRepository hashes the plain password before saving to users.dat
+        boolean success = userRepository.registerUser(username, password);
+        if (success) {
+            info("Account created!\nYou can now log in.");
+            clearFields();
+        } else {
+            warn("Registration failed. Please try again.");
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
