@@ -11,11 +11,17 @@ public class PasswordRepository {
 
 
     public PasswordRepository() {
+        /*
+        if this is the first run, use new encryption
+        if loading from a saved key, use new encryption (savedkey string)
+         */
         this.cryptoEngine = new Encryption();
     }
-
+    //your method that hanles UI data
     public void saveNewPassword(String plainTextPassword) {
+        //encrypt plain text data
         String secureData = cryptoEngine.encrypt(plainTextPassword);
+        //pass securedata to your file saving logic here if needed
         System.out.println("Success! Encrypted data to save: " + secureData);
     }
 
