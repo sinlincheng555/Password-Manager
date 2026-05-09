@@ -15,7 +15,7 @@ public class Main {
 
         // --- Util ---
         Encryption encryption = new Encryption();
-        Validator validator = new Validator();
+        Validator  validator  = new Validator();
 
         // --- Repository ---
         PasswordRepository passwordRepository = new PasswordRepository();
