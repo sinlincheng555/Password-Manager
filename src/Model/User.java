@@ -1,29 +1,57 @@
 package Model;
 
 public class User {
+
     private String username;
-    private String hashedPassword; // AES-256 encrypted password stored here
+    private String masterPassword;
 
-    public User() {}
+    private int failedAttempts;
+    private boolean accountLocked;
 
-    public User(String username, String hashedPassword) {
+    public User() {
+
+    }
+
+    public User(String username, String masterPassword) {
         this.username = username;
-        this.hashedPassword = hashedPassword;
+        this.masterPassword = masterPassword;
+        this.failedAttempts = 0;
+        this.accountLocked = false;
     }
 
     public String getUsername() {
         return username;
     }
 
+    public String getMasterPassword() {
+        return masterPassword;
+    }
+
+    public int getFailedAttempts() {
+        return failedAttempts;
+    }
+
+    public boolean isAccountLocked() {
+        return accountLocked;
+    }
+
     public void setUsername(String username) {
         this.username = username;
     }
 
-    public String getHashedPassword() {
-        return hashedPassword;
+    public void setMasterPassword(String masterPassword) {
+        this.masterPassword = masterPassword;
     }
 
-    public void setHashedPassword(String hashedPassword) {
-        this.hashedPassword = hashedPassword;
+    public void addFailedAttempt() {
+        failedAttempts++;
+
+        if (failedAttempts >= 3) {
+            accountLocked = true;
+        }
+    }
+
+    public void resetAttempts() {
+        failedAttempts = 0;
     }
 }

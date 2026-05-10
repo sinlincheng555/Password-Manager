@@ -361,7 +361,6 @@ public class DashboardView extends Application {
                 setGraphic(empty ? null : container);
             }
         });
-
         table.getColumns().addAll(siteCol, userCol, passCol, actionCol);
 
         // Add action — validates fields, encrypts password, stores entry
@@ -369,26 +368,30 @@ public class DashboardView extends Application {
             String pwd = passVisible.isVisible() ? passVisible.getText() : passField.getText();
 
             if (siteField.getText().isEmpty()) {
-                Alert a = new Alert(Alert.AlertType.WARNING);
-                a.setContentText("Please enter site name");
-                a.show();
+                new Alert(Alert.AlertType.WARNING, "Please enter site name").show();
             } else if (userField.getText().isEmpty()) {
-                Alert a = new Alert(Alert.AlertType.WARNING);
-                a.setContentText("Please enter username");
-                a.show();
+                new Alert(Alert.AlertType.WARNING, "Please enter username").show();
             } else if (pwd.isEmpty()) {
-                Alert a = new Alert(Alert.AlertType.WARNING);
-                a.setContentText("Please enter password");
-                a.show();
+                new Alert(Alert.AlertType.WARNING, "Please enter password").show();
             } else {
-                String encrypted = encryption.encrypt(pwd);
-                masterData.add(new PasswordEntry(siteField.getText(), userField.getText(), encrypted));
-                siteField.clear();
-                userField.clear();
-                passField.clear();
-                passVisible.clear();
+                // Use controller — this runs duplicate check + strength check
+                boolean added = controller.addPassword(siteField.getText(), userField.getText(), pwd);
+                if (!added) {
+                    new Alert(Alert.AlertType.WARNING,
+                            "Could not add: duplicate entry or password too weak.\n" +
+                                    "Password needs 8+ chars, upper, lower, number and symbol.").show();
+                } else {
+                    // Still add to UI table using encrypted form
+                    String encrypted = encryption.encrypt(pwd);
+                    masterData.add(new PasswordEntry(siteField.getText(), userField.getText(), encrypted));
+                    siteField.clear();
+                    userField.clear();
+                    passField.clear();
+                    passVisible.clear();
+                }
             }
         });
+
 
         panel.getChildren().addAll(panelTitle("Passwords"), fieldLabel("Search:"), searchField, addRow, table);
         contentArea.getChildren().setAll(panel);
