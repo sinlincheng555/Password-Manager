@@ -1,38 +1,8 @@
 # Password Manager
 
-A secure password manager built in Java with JavaFX, developed in IntelliJ IDEA.
-
----
-
-## Requirements
-
-- Java JDK 23
-- JavaFX SDK 23
-- IntelliJ IDEA (recommended)
-
----
-
-## Running the Project
-
-Clone the repository and open it in IntelliJ IDEA. If the project runs without any errors, you are good to go.
-
-If you get a JavaFX error on startup, follow the troubleshooting guide below.
-
----
-
-## JavaFX Troubleshooting Guide
-
-If you see an error like:
-```
-Error occurred during initialization of boot layer
-java.lang.module.FindException: Module javafx.controls not found
-```
-or
-```
-Unsupported major.minor version
-```
-
-Follow these steps exactly.
+A secure password manager built in Java with JavaFX, 
+developed in IntelliJ IDEA. For best  experiance use 
+IntelliJ IDEA to run the code
 
 ---
 
@@ -81,22 +51,3 @@ Follow these steps exactly.
    ```
 5. Click **Apply** then **OK**
 
----
-
-## Common Mistakes
-
-| Mistake | Fix |
-|---|---|
-| Downloaded JavaFX 26 or another version | Re-download and make sure it says version **23** |
-| Pointed to the wrong folder | Make sure you selected the `lib` folder **inside** the SDK, not the SDK root |
-| VM Options field is empty | Re-check Step 3 and make sure you clicked Apply |
-| JDK version is not 23 | Go to File → Project Structure → SDK and set it to JDK 23 |
-| Path has spaces in it | Move the JavaFX folder to `C:\javafx-sdk-23\` with no spaces |
-
----
-
-## Why Version 23 Specifically
-
-This project was developed using **JDK 23**. JavaFX must match the JDK version exactly. Using JavaFX 26 with JDK 23 will cause an `Unsupported major.minor version` error because the JARs are compiled for a newer Java version than you have installed.
-
----
