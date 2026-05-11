@@ -27,7 +27,10 @@ public class DashboardView extends Application {
 
     // Passwords panel — persists across re-opens of the panel
     private final ObservableList<PasswordEntry> masterData = FXCollections.observableArrayList();
-    private final Encryption encryption = new Encryption();
+    private final Repository.PasswordRepository passwordRepository = new Repository.PasswordRepository();
+    private final Encryption encryption = passwordRepository.getEncryption();
+
+    private javafx.animation.PauseTransition idleTimer;
 
     // Secure Notes panel — persists while dashboard is open
     private final ObservableList<SecureNote> noteItems = FXCollections.observableArrayList();
@@ -100,6 +103,21 @@ public class DashboardView extends Application {
         HBox root = new HBox();
         HBox.setHgrow(contentArea, Priority.ALWAYS);
         root.getChildren().addAll(sidebar, contentArea);
+
+        // Logic to Reset the timer whenever the user moves the mouse or types
+        root.addEventFilter(javafx.scene.input.InputEvent.ANY, e -> {
+            if (idleTimer != null) idleTimer.playFromStart();
+        });
+
+// Logic for Requirement: Lock when minimized
+        stage.iconifiedProperty().addListener((obs, wasMinimized, isNowMinimized) -> {
+            if (isNowMinimized) {
+                stage.close(); // Closes the dashboard; user must log in again
+            }
+        });
+
+// Start the 3-minute inactivity countdown
+        setupAutoLock(stage);
 
         Scene scene = new Scene(root, 800, 480);
         stage.setTitle("Password Manager");
@@ -276,6 +294,14 @@ public class DashboardView extends Application {
         passVisible.managedProperty().bind(passVisible.visibleProperty());
 
         Button toggleBtn = darkButton("Show");
+        Label strengthLabel = new Label("");
+        strengthLabel.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        strengthLabel.setMinWidth(60);
+        passField.textProperty().addListener((obs, oldVal, newVal) -> {updateStrengthLabel(strengthLabel, newVal);
+        });
+        passVisible.textProperty().addListener((obs, oldVal, newVal) -> {
+            updateStrengthLabel(strengthLabel, newVal);
+        });
         toggleBtn.setOnAction(e -> {
             boolean show = !passVisible.isVisible();
             if (show) {
@@ -289,10 +315,16 @@ public class DashboardView extends Application {
         });
 
         Button addBtn = redButton("Add");
-        HBox addRow = new HBox(12, siteField, userField, passField, passVisible, toggleBtn, addBtn);
+        HBox addRow = new HBox(12, siteField, userField, passField, passVisible, toggleBtn, strengthLabel, addBtn);
         addRow.setAlignment(Pos.CENTER_LEFT);
 
         // Filter & sort
+        // Load from disk on first open (masterData will be empty until then)
+        if (masterData.isEmpty()) {
+            for (Model.Password p : passwordRepository.loadAllPasswords()) {
+                masterData.add(new PasswordEntry(p.getSiteName(), p.getUsername(), p.getPassword()));
+            }
+        }
         FilteredList<PasswordEntry> filteredData = new FilteredList<>(masterData, p -> true);
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
             filteredData.setPredicate(entry -> {
@@ -317,6 +349,42 @@ public class DashboardView extends Application {
         userCol.setCellValueFactory(d -> d.getValue().username);
         TableColumn<PasswordEntry, String> passCol = new TableColumn<>("Password");
         passCol.setCellValueFactory(d -> d.getValue().password);
+        passCol.setCellFactory(col -> new TableCell<>() {
+            private final Label display = new Label("••••••••");
+            private final Button eyeBtn = new Button("👁");
+            private final HBox cell = new HBox(8, display, eyeBtn);
+            private boolean revealed = false;
+            {
+                display.setStyle("-fx-text-fill: white;");
+                eyeBtn.setStyle(
+                        "-fx-background-color: transparent;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-cursor: hand;" +
+                                "-fx-padding: 0 4 0 4;"
+                );
+                cell.setAlignment(Pos.CENTER_LEFT);
+                eyeBtn.setOnAction(e -> {
+                    revealed = !revealed;
+                    if (revealed) {
+                        PasswordEntry item = getTableView().getItems().get(getIndex());
+                        display.setText(encryption.decrypt(item.password.get()));
+                    } else {
+                        display.setText("••••••••");
+                    }
+                });
+            }
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    revealed = false;
+                    display.setText("••••••••");
+                    setGraphic(cell);
+                }
+            }
+        });
 
         // Action buttons: Copy / Edit / Delete
         TableColumn<PasswordEntry, Void> actionCol = new TableColumn<>("Actions");
@@ -339,6 +407,10 @@ public class DashboardView extends Application {
                     content.putString(plainPassword);
                     clipboard.setContent(content);
                     copyBtn.setText("Copied!");
+                    // Clear clipboard after 60 seconds for security
+                    javafx.animation.PauseTransition clearClipboard = new javafx.animation.PauseTransition(javafx.util.Duration.minutes(1));
+                    clearClipboard.setOnFinished(event -> clipboard.clear());
+                    clearClipboard.play();
                     new java.util.Timer().schedule(new java.util.TimerTask() {
                         @Override public void run() {
                             javafx.application.Platform.runLater(() -> copyBtn.setText("Copy"));
@@ -346,7 +418,12 @@ public class DashboardView extends Application {
                     }, 2000);
                 });
 
-                delBtn.setOnAction(e -> masterData.remove(getTableView().getItems().get(getIndex())));
+                delBtn.setOnAction(e -> {
+                    masterData.remove(getTableView().getItems().get(getIndex()));
+                    passwordRepository.saveAllPasswords(masterData.stream()
+                            .map(p -> new Model.Password(p.site.get(), p.username.get(), p.password.get()))
+                            .collect(java.util.stream.Collectors.toList()));
+                });
 
                 editBtn.setOnAction(e -> {
                     PasswordEntry item = getTableView().getItems().get(getIndex());
@@ -384,6 +461,9 @@ public class DashboardView extends Application {
                     // Still add to UI table using encrypted form
                     String encrypted = encryption.encrypt(pwd);
                     masterData.add(new PasswordEntry(siteField.getText(), userField.getText(), encrypted));
+                    passwordRepository.saveAllPasswords(masterData.stream()
+                            .map(p -> new Model.Password(p.site.get(), p.username.get(), p.password.get()))
+                            .collect(java.util.stream.Collectors.toList()));
                     siteField.clear();
                     userField.clear();
                     passField.clear();
@@ -585,5 +665,26 @@ public class DashboardView extends Application {
 
     public static void main(String[] args) {
         launch(args);
+    }
+
+    private void updateStrengthLabel(Label label, String password) {
+        String strength = controller.checkStrength(password);
+        label.setText(strength);
+        switch (strength) {
+            case "Weak"   -> label.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+            case "Medium" -> label.setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold;");
+            case "Strong" -> label.setStyle("-fx-text-fill: #2ecc71; -fx-font-weight: bold;");
+            default       -> label.setStyle("-fx-text-fill: #aaa;");
+        }
+    }
+    private void setupAutoLock(javafx.stage.Stage stage) {
+        // Requirements state 3 minutes of inactivity
+        idleTimer = new javafx.animation.PauseTransition(javafx.util.Duration.minutes(3));
+        idleTimer.setOnFinished(e -> {
+            System.out.println("Auto-lock triggered.");
+            stage.close(); // Force the window closed
+            // In a full implementation, you would call Main.showLogin() here
+        });
+        idleTimer.play();
     }
 }

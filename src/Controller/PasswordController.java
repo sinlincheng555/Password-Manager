@@ -41,8 +41,7 @@ public class PasswordController {
             return false;
         }
 
-        String encryptedPassword = encryption.encrypt(plainPassword);
-        Password newPassword = new Password(siteName, username, encryptedPassword);
+        Password newPassword = new Password(siteName, username, plainPassword);
         savedPasswords.add(newPassword);
 
         return true;

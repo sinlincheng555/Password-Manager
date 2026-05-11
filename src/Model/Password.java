@@ -44,4 +44,9 @@ public class Password {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    public void setDateSaved(String dateSaved) {
+        this.dateSaved = dateSaved;
+    }
+
 }

@@ -28,7 +28,7 @@ public class UserRepository {
 
     // ── Public API ────────────────────────────────────────────────────
 
-   //encryt the passowrd into aes256 from plain text
+    //encryt the passowrd into aes256 from plain text
     public boolean registerUser(String username, String plainPassword) {
         if (username == null || username.trim().isEmpty()) return false;
         if (plainPassword == null || plainPassword.isEmpty()) return false;
