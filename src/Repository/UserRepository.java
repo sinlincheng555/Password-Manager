@@ -9,9 +9,9 @@ import java.util.Map;
 
 public class UserRepository {
 
-    private static final String STORAGE_DIR  = System.getProperty("user.home") + "/PasswordManager/";
-    private static final String STORAGE_FILE = STORAGE_DIR + "users.dat";
-    private static final String KEY_FILE     = STORAGE_DIR + "users.key";
+    private static final String STORAGE_DIR  = "";   // same folder as vault.csv / vault.key
+    private static final String STORAGE_FILE = "users.dat";
+    private static final String KEY_FILE     = "users.key";
 
     // In-memory map: username (lowercase) -> AES-256 encrypted password
     private final Map<String, String> users = new HashMap<>();
