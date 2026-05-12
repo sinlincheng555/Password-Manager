@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class UserRepository {
 
-    private static final String STORAGE_DIR  = "";   // same folder as vault.csv / vault.key
+    private static final String STORAGE_DIR  = "";
     private static final String STORAGE_FILE = "users.dat";
     private static final String KEY_FILE     = "users.key";
 

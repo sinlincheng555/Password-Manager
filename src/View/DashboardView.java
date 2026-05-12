@@ -24,6 +24,7 @@ public class DashboardView extends Application {
 
     private static PasswordController controller;
     private StackPane contentArea;
+    private boolean isDarkModeOn = false;//current darkmode state is stored + is default to false
 
     // Passwords panel — persists across re-opens of the panel
     private final ObservableList<PasswordEntry> masterData = FXCollections.observableArrayList();
@@ -58,6 +59,7 @@ public class DashboardView extends Application {
 
         Button btnAccount      = sidebarButton("Account");
         Button btnPasswords    = sidebarButton("Passwords");
+        Button btnPasswordGenerator = sidebarButton("Password Generator");
         Button btnSecureNotes  = sidebarButton("Secure Notes");
         Button btnDeviceSync   = sidebarButton("Device Syncing");
         Button btnImportExport = sidebarButton("Import/Export");
@@ -78,7 +80,7 @@ public class DashboardView extends Application {
         );
 
         sidebar.getChildren().addAll(
-                btnAccount, btnPasswords, btnSecureNotes, btnDeviceSync,
+                btnAccount, btnPasswords,btnPasswordGenerator, btnSecureNotes, btnDeviceSync,
                 btnImportExport, btnSettings,
                 spacer, btnLogout
         );
@@ -93,6 +95,7 @@ public class DashboardView extends Application {
         // Button actions
         btnAccount.setOnAction(e -> showAccountPanel());
         btnPasswords.setOnAction(e -> showPasswordsPanel());
+        btnPasswordGenerator.setOnAction(e -> showPasswordGeneratorPanel());
         btnSecureNotes.setOnAction(e -> showSecureNotesPanel());
         btnDeviceSync.setOnAction(e -> showDeviceSyncPanel());
         btnImportExport.setOnAction(e -> showImportExportPanel());
@@ -477,6 +480,48 @@ public class DashboardView extends Application {
         contentArea.getChildren().setAll(panel);
     }
 
+    // ── PASSWORD GENERATOR panel ────────────────────────────────────────────
+    private void showPasswordGeneratorPanel(){
+        VBox panel = new VBox(16);
+        panel.setPadding(new Insets(30, 40, 30, 40));
+        TextField generatedPwd = darkField("Click 'Generate Password'");
+        generatedPwd.setPrefWidth(300);
+        Button genBtn = redButton("Generate Password");
+        Button copyBtn = darkButton("Copy");
+
+        genBtn.setOnAction(e -> {
+            generatedPwd.setText(controller.generatePassword());
+            copyBtn.setText("Copy");//resets text
+        });
+
+        //Copy button logic reused
+        copyBtn.setOnAction(e -> {
+            String pwd = generatedPwd.getText();
+            //only copy if something is generated
+            if (!pwd.isEmpty() && !pwd.equals("Click 'Generate Password'")) {
+                final Clipboard clipboard = Clipboard.getSystemClipboard();
+                final ClipboardContent content = new ClipboardContent();
+                content.putString(pwd);
+                clipboard.setContent(content);
+                copyBtn.setText("Copied!");
+                //clear clipboard 60 seconds for security
+                javafx.animation.PauseTransition clearClipboard = new javafx.animation.PauseTransition(javafx.util.Duration.minutes(1));
+                clearClipboard.setOnFinished(event -> clipboard.clear());
+                clearClipboard.play();
+                new java.util.Timer().schedule(new java.util.TimerTask() {
+                    @Override public void run() {
+                        javafx.application.Platform.runLater(() -> copyBtn.setText("Copy"));
+                    }
+                }, 2000);
+            }
+        });
+
+
+        panel.getChildren().addAll(panelTitle("Password Generator"), fieldLabel("Generate your password here:"), generatedPwd, genBtn, copyBtn);
+        contentArea.getChildren().setAll(panel);
+
+    }
+
     // ── SECURE NOTES panel ────────────────────────────────────────────
     private void showSecureNotesPanel() {
 
@@ -638,13 +683,29 @@ public class DashboardView extends Application {
         panel.setPadding(new Insets(30, 40, 30, 40));
 
         CheckBox darkMode = new CheckBox("Dark Mode");
-        CheckBox autoLock = new CheckBox("Auto-lock after 5 minutes");
+        CheckBox autoLock = new CheckBox("Auto-lock after 3 minutes");
         CheckBox showPass = new CheckBox("Show passwords by default");
         for (CheckBox cb : new CheckBox[]{darkMode, autoLock, showPass}) {
             cb.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
         }
 
         Button saveBtn = redButton("Save Settings");
+
+        //ensures and checks if current checkbox visually matches the right darkmode state
+        darkMode.setSelected(isDarkModeOn);
+
+        //dark mode switch logic
+        saveBtn.setOnAction(e -> {
+            isDarkModeOn = darkMode.isSelected();
+            if (darkMode.isSelected()) {
+                //swaps background colour to dark grey/light black
+                contentArea.setStyle("-fx-background-color: #2E3033;");
+            } else {
+                //switches back to normal colour
+                contentArea.setStyle("-fx-background-color: linear-gradient(to bottom right, #e07b39, #c0392b);");
+            }
+        });
+
 
         panel.getChildren().addAll(panelTitle("Settings"), darkMode, autoLock, showPass, saveBtn);
         contentArea.getChildren().setAll(panel);
