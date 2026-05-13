@@ -4,6 +4,7 @@ import Model.User;
 import Model.Password;
 import Model.SecureNote;
 import Repository.PasswordRepository;
+import Repository.UserRepository;
 import Until.Encryption;
 import Until.Validator;
 
@@ -15,6 +16,7 @@ public class PasswordController {
 
     private User user;
     private PasswordRepository passwordRepository;
+    private UserRepository userRepository;
     private Encryption encryption;
     private Validator validator;
 
@@ -107,4 +109,26 @@ public class PasswordController {
     public void deleteSecureNote(SecureNote note) {
         passwordRepository.deleteSecureNote(note);
     }
+
+    public void setLoggedUser(User loggedInUser) {
+        this.user = loggedInUser;
+    }
+
+    public User getLoggedUser() {
+        return this.user;
+    }
+
+    public void setUserRepository(UserRepository repo) {
+        this.userRepository = repo;
+    }
+
+    public void updateAccountInfo(String email, String dob, String phone) {
+        if (user != null && userRepository != null) {
+            user.setEmail(email);
+            user.setDob(dob);
+            user.setPhone(phone);
+            userRepository.updateUserDetails(user);
+        }
+    }
+
 }

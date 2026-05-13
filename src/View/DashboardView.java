@@ -59,7 +59,6 @@ public class DashboardView extends Application {
 
         Button btnAccount      = sidebarButton("Account");
         Button btnPasswords    = sidebarButton("Passwords");
-        Button btnPasswordGenerator = sidebarButton("Password Generator");
         Button btnSecureNotes  = sidebarButton("Secure Notes");
         Button btnDeviceSync   = sidebarButton("Device Syncing");
         Button btnImportExport = sidebarButton("Import/Export");
@@ -80,7 +79,7 @@ public class DashboardView extends Application {
         );
 
         sidebar.getChildren().addAll(
-                btnAccount, btnPasswords,btnPasswordGenerator, btnSecureNotes, btnDeviceSync,
+                btnAccount, btnPasswords, btnSecureNotes, btnDeviceSync,
                 btnImportExport, btnSettings,
                 spacer, btnLogout
         );
@@ -95,7 +94,6 @@ public class DashboardView extends Application {
         // Button actions
         btnAccount.setOnAction(e -> showAccountPanel());
         btnPasswords.setOnAction(e -> showPasswordsPanel());
-        btnPasswordGenerator.setOnAction(e -> showPasswordGeneratorPanel());
         btnSecureNotes.setOnAction(e -> showSecureNotesPanel());
         btnDeviceSync.setOnAction(e -> showDeviceSyncPanel());
         btnImportExport.setOnAction(e -> showImportExportPanel());
@@ -233,17 +231,31 @@ public class DashboardView extends Application {
         panel.setPadding(new Insets(30, 40, 30, 40));
         panel.setAlignment(Pos.TOP_LEFT);
 
+        // --- NEW LINES ADDED HERE ---
+        Model.User currentUser = controller.getLoggedUser();
+
         TextField emailField = darkField("Example@gmail.com");
         emailField.setPrefWidth(400);
+        if (currentUser != null && !currentUser.getEmail().isEmpty()) {
+            emailField.setText(currentUser.getEmail());
+        }
 
-        PasswordField passField = darkPassField("Example12345!");
+        PasswordField passField = darkPassField("Master Password (Cannot Edit Here)");
         passField.setPrefWidth(400);
+        passField.setDisable(true);
 
         TextField dobField = darkField("Day/Month/Year");
         dobField.setPrefWidth(180);
+        if (currentUser != null && !currentUser.getDob().isEmpty()) {
+            dobField.setText(currentUser.getDob());
+        }
 
         TextField phoneField = darkField("07000 00000");
         phoneField.setPrefWidth(220);
+        if (currentUser != null && !currentUser.getPhone().isEmpty()) {
+            phoneField.setText(currentUser.getPhone());
+        }
+        // ----------------------------
 
         HBox dobPhoneRow = new HBox(20,
                 new VBox(6, fieldLabel("Date of Birth:"), dobField),
@@ -255,6 +267,14 @@ public class DashboardView extends Application {
         HBox twoFARow = new HBox(12, linkBtn, genPassBtn);
 
         Button confirmBtn = darkButton("Confirm Changes");
+
+        // --- NEW LINES ADDED HERE ---
+        confirmBtn.setOnAction(e -> {
+            controller.updateAccountInfo(emailField.getText(), dobField.getText(), phoneField.getText());
+            new Alert(Alert.AlertType.INFORMATION, "Account details encrypted and saved securely!").show();
+        });
+        // ----------------------------
+
         HBox confirmRow = new HBox();
         confirmRow.setAlignment(Pos.BOTTOM_RIGHT);
         Region s = new Region();
@@ -480,48 +500,6 @@ public class DashboardView extends Application {
         contentArea.getChildren().setAll(panel);
     }
 
-    // ── PASSWORD GENERATOR panel ────────────────────────────────────────────
-    private void showPasswordGeneratorPanel(){
-        VBox panel = new VBox(16);
-        panel.setPadding(new Insets(30, 40, 30, 40));
-        TextField generatedPwd = darkField("Click 'Generate Password'");
-        generatedPwd.setPrefWidth(300);
-        Button genBtn = redButton("Generate Password");
-        Button copyBtn = darkButton("Copy");
-
-        genBtn.setOnAction(e -> {
-            generatedPwd.setText(controller.generatePassword());
-            copyBtn.setText("Copy");//resets text
-        });
-
-        //Copy button logic reused
-        copyBtn.setOnAction(e -> {
-            String pwd = generatedPwd.getText();
-            //only copy if something is generated
-            if (!pwd.isEmpty() && !pwd.equals("Click 'Generate Password'")) {
-                final Clipboard clipboard = Clipboard.getSystemClipboard();
-                final ClipboardContent content = new ClipboardContent();
-                content.putString(pwd);
-                clipboard.setContent(content);
-                copyBtn.setText("Copied!");
-                //clear clipboard 60 seconds for security
-                javafx.animation.PauseTransition clearClipboard = new javafx.animation.PauseTransition(javafx.util.Duration.minutes(1));
-                clearClipboard.setOnFinished(event -> clipboard.clear());
-                clearClipboard.play();
-                new java.util.Timer().schedule(new java.util.TimerTask() {
-                    @Override public void run() {
-                        javafx.application.Platform.runLater(() -> copyBtn.setText("Copy"));
-                    }
-                }, 2000);
-            }
-        });
-
-
-        panel.getChildren().addAll(panelTitle("Password Generator"), fieldLabel("Generate your password here:"), generatedPwd, genBtn, copyBtn);
-        contentArea.getChildren().setAll(panel);
-
-    }
-
     // ── SECURE NOTES panel ────────────────────────────────────────────
     private void showSecureNotesPanel() {
 
@@ -683,7 +661,7 @@ public class DashboardView extends Application {
         panel.setPadding(new Insets(30, 40, 30, 40));
 
         CheckBox darkMode = new CheckBox("Dark Mode");
-        CheckBox autoLock = new CheckBox("Auto-lock after 3 minutes");
+        CheckBox autoLock = new CheckBox("Auto-lock after 5 minutes");
         CheckBox showPass = new CheckBox("Show passwords by default");
         for (CheckBox cb : new CheckBox[]{darkMode, autoLock, showPass}) {
             cb.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");

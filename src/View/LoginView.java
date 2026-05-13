@@ -153,6 +153,10 @@ public class LoginView extends Application {
             warn("Invalid username or password. Please try again.");
             return;
         }
+
+        controller.setLoggedUser(user);
+        controller.setUserRepository(userRepository);
+
         try {
             DashboardView dashboard = new DashboardView(controller);
             dashboard.start(new Stage());
