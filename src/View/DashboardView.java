@@ -25,6 +25,8 @@ public class DashboardView extends Application {
     private static PasswordController controller;
     private StackPane contentArea;
     private boolean isDarkModeOn = false;//current darkmode state is stored + is default to false
+    private boolean autoLockEnabled = true;
+    private int autoLockMinutes  = 3;
 
     // Passwords panel — persists across re-opens of the panel
     private final ObservableList<PasswordEntry> masterData = FXCollections.observableArrayList();
@@ -661,29 +663,37 @@ public class DashboardView extends Application {
         panel.setPadding(new Insets(30, 40, 30, 40));
 
         CheckBox darkMode = new CheckBox("Dark Mode");
-        CheckBox autoLock = new CheckBox("Auto-lock after 5 minutes");
+        CheckBox autoLock = new CheckBox("Auto-lock after 3 minutes");
         CheckBox showPass = new CheckBox("Show passwords by default");
         for (CheckBox cb : new CheckBox[]{darkMode, autoLock, showPass}) {
             cb.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
         }
 
+        // Reflect current state
+        darkMode.setSelected(isDarkModeOn);
+        autoLock.setSelected(autoLockEnabled);
+
         Button saveBtn = redButton("Save Settings");
 
-        //ensures and checks if current checkbox visually matches the right darkmode state
-        darkMode.setSelected(isDarkModeOn);
-
-        //dark mode switch logic
         saveBtn.setOnAction(e -> {
+            // Dark mode
             isDarkModeOn = darkMode.isSelected();
-            if (darkMode.isSelected()) {
-                //swaps background colour to dark grey/light black
-                contentArea.setStyle("-fx-background-color: #2E3033;");
-            } else {
-                //switches back to normal colour
-                contentArea.setStyle("-fx-background-color: linear-gradient(to bottom right, #e07b39, #c0392b);");
-            }
-        });
+            contentArea.setStyle(isDarkModeOn
+                    ? "-fx-background-color: #2E3033;"
+                    : "-fx-background-color: linear-gradient(to bottom right, #e07b39, #c0392b);"
+            );
 
+            // Auto-lock: update flag + restart timer with new setting
+            autoLockEnabled = autoLock.isSelected();
+            autoLockMinutes = autoLockEnabled ? 3 : 3; // 5 min if enabled via checkbox
+            if (idleTimer != null) {
+                idleTimer.stop();
+                idleTimer.setDuration(javafx.util.Duration.minutes(autoLockMinutes));
+                if (autoLockEnabled) idleTimer.playFromStart();
+            }
+
+            new Alert(Alert.AlertType.INFORMATION, "Settings saved!").show();
+        });
 
         panel.getChildren().addAll(panelTitle("Settings"), darkMode, autoLock, showPass, saveBtn);
         contentArea.getChildren().setAll(panel);
@@ -717,13 +727,18 @@ public class DashboardView extends Application {
         }
     }
     private void setupAutoLock(javafx.stage.Stage stage) {
-        // Requirements state 3 minutes of inactivity
-        idleTimer = new javafx.animation.PauseTransition(javafx.util.Duration.minutes(3));
+        idleTimer = new javafx.animation.PauseTransition(
+                javafx.util.Duration.minutes(autoLockMinutes)
+        );
         idleTimer.setOnFinished(e -> {
-            System.out.println("Auto-lock triggered.");
-            stage.close(); // Force the window closed
-            // In a full implementation, you would call Main.showLogin() here
+            if (autoLockEnabled) {
+                System.out.println("Auto-lock triggered.");
+                stage.close();
+                LoginView loginView = new LoginView();
+                try { loginView.start(new Stage()); } catch (Exception ex) { ex.printStackTrace(); }
+            }
         });
         idleTimer.play();
+
     }
 }
