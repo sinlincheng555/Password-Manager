@@ -358,7 +358,7 @@ public class DashboardView extends Application {
         TableView<PasswordEntry> table = new TableView<>(sortedData);
         sortedData.comparatorProperty().bind(table.comparatorProperty());
 
-        table.setStyle("-fx-background-color: #2b2b2b;");
+        table.setStyle("-fx-background-color: #808080;");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -374,7 +374,7 @@ public class DashboardView extends Application {
             private final HBox cell = new HBox(8, display, eyeBtn);
             private boolean revealed = false;
             {
-                display.setStyle("-fx-text-fill: white;");
+                display.setStyle("-fx-text-fill: black;");
                 eyeBtn.setStyle(
                         "-fx-background-color: transparent;" +
                                 "-fx-text-fill: white;" +
@@ -450,6 +450,10 @@ public class DashboardView extends Application {
                     userField.setText(item.username.get());
                     passField.setText(encryption.decrypt(item.password.get()));
                     masterData.remove(item);
+                    controller.getSavedPasswords().removeIf(p ->
+                            p.getSiteName().equalsIgnoreCase(item.site.get()) &&
+                                    p.getUsername().equalsIgnoreCase(item.username.get())
+                    );
                 });
             }
             @Override protected void updateItem(Void item, boolean empty) {

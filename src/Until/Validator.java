@@ -56,7 +56,7 @@ public class Validator {
             boolean sameSite = item.getSiteName().equalsIgnoreCase(siteName.trim());
             boolean sameUsername = item.getUsername().equalsIgnoreCase(username.trim());
 
-            if (sameSite && sameUsername) {
+            if (sameSite || sameUsername) {
                 return true;
             }
         }
