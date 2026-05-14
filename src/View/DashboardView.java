@@ -62,8 +62,6 @@ public class DashboardView extends Application {
         Button btnAccount      = sidebarButton("Account");
         Button btnPasswords    = sidebarButton("Passwords");
         Button btnSecureNotes  = sidebarButton("Secure Notes");
-        Button btnDeviceSync   = sidebarButton("Device Syncing");
-        Button btnImportExport = sidebarButton("Import/Export");
         Button btnSettings     = sidebarButton("Settings");
 
         Region spacer = new Region();
@@ -81,8 +79,7 @@ public class DashboardView extends Application {
         );
 
         sidebar.getChildren().addAll(
-                btnAccount, btnPasswords, btnSecureNotes, btnDeviceSync,
-                btnImportExport, btnSettings,
+                btnAccount, btnPasswords, btnSecureNotes, btnSettings,
                 spacer, btnLogout
         );
 
@@ -97,8 +94,6 @@ public class DashboardView extends Application {
         btnAccount.setOnAction(e -> showAccountPanel());
         btnPasswords.setOnAction(e -> showPasswordsPanel());
         btnSecureNotes.setOnAction(e -> showSecureNotesPanel());
-        btnDeviceSync.setOnAction(e -> showDeviceSyncPanel());
-        btnImportExport.setOnAction(e -> showImportExportPanel());
         btnSettings.setOnAction(e -> showSettingsPanel());
         btnLogout.setOnAction(e -> stage.close());
 
@@ -263,11 +258,6 @@ public class DashboardView extends Application {
                 new VBox(6, fieldLabel("Date of Birth:"), dobField),
                 new VBox(6, fieldLabel("Phone number:"), phoneField)
         );
-
-        Button linkBtn    = redButton("LINK?");
-        Button genPassBtn = redButton("Generate secure password");
-        HBox twoFARow = new HBox(12, linkBtn, genPassBtn);
-
         Button confirmBtn = darkButton("Confirm Changes");
 
         // --- NEW LINES ADDED HERE ---
@@ -290,8 +280,6 @@ public class DashboardView extends Application {
                 fieldLabel("Password:"),
                 passField,
                 dobPhoneRow,
-                fieldLabel("2FA:"),
-                twoFARow,
                 new Region(),
                 confirmRow
         );
@@ -623,40 +611,6 @@ public class DashboardView extends Application {
             editing[0] = null;
         });
     }
-
-    // ── DEVICE SYNCING panel ──────────────────────────────────────────
-    private void showDeviceSyncPanel() {
-        VBox panel = new VBox(16);
-        panel.setPadding(new Insets(30, 40, 30, 40));
-
-        Label info = new Label("Sync your passwords across devices.");
-        info.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
-
-        TextField deviceField = darkField("Device name or ID");
-        deviceField.setPrefWidth(300);
-
-        Button syncBtn = redButton("Sync Now");
-
-        panel.getChildren().addAll(panelTitle("Device Syncing"), info, fieldLabel("Add Device:"), deviceField, syncBtn);
-        contentArea.getChildren().setAll(panel);
-    }
-
-    // ── IMPORT / EXPORT panel ─────────────────────────────────────────
-    private void showImportExportPanel() {
-        VBox panel = new VBox(16);
-        panel.setPadding(new Insets(30, 40, 30, 40));
-
-        Label info = new Label("Import or export your password vault.");
-        info.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
-
-        Button importBtn = redButton("Import from CSV");
-        Button exportBtn = redButton("Export to CSV");
-        HBox btnRow = new HBox(14, importBtn, exportBtn);
-
-        panel.getChildren().addAll(panelTitle("Import / Export"), info, btnRow);
-        contentArea.getChildren().setAll(panel);
-    }
-
     // ── SETTINGS panel ────────────────────────────────────────────────
     private void showSettingsPanel() {
         VBox panel = new VBox(16);
@@ -664,8 +618,7 @@ public class DashboardView extends Application {
 
         CheckBox darkMode = new CheckBox("Dark Mode");
         CheckBox autoLock = new CheckBox("Auto-lock after 3 minutes");
-        CheckBox showPass = new CheckBox("Show passwords by default");
-        for (CheckBox cb : new CheckBox[]{darkMode, autoLock, showPass}) {
+        for (CheckBox cb : new CheckBox[]{darkMode, autoLock}) {
             cb.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
         }
 
@@ -695,7 +648,7 @@ public class DashboardView extends Application {
             new Alert(Alert.AlertType.INFORMATION, "Settings saved!").show();
         });
 
-        panel.getChildren().addAll(panelTitle("Settings"), darkMode, autoLock, showPass, saveBtn);
+        panel.getChildren().addAll(panelTitle("Settings"), darkMode, autoLock, saveBtn);
         contentArea.getChildren().setAll(panel);
     }
 
