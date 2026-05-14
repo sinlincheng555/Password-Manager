@@ -2,6 +2,15 @@
 
 A secure JavaFX-based password manager with AES-256/GCM encryption, user authentication, secure notes, and auto-lock functionality.
 
+## 🔐 Login Credentials
+
+An existing account is already set up for you to use straight away, or you can register your own on the login screen.
+
+| Field    | Value      |
+|----------|------------|
+| Username | `test`     |
+| Password | `12345678` |
+
 ## Recommended Method
 
 Clone the repository using the link below:
