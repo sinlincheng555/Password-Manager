@@ -61,6 +61,7 @@ public class DashboardView extends Application {
 
         Button btnAccount      = sidebarButton("Account");
         Button btnPasswords    = sidebarButton("Passwords");
+        Button btnPasswordGenerator = sidebarButton("Password Generator");
         Button btnSecureNotes  = sidebarButton("Secure Notes");
         Button btnSettings     = sidebarButton("Settings");
 
@@ -78,10 +79,15 @@ public class DashboardView extends Application {
                         "-fx-background-radius: 8;"
         );
 
+        // Added to sidebar children:
         sidebar.getChildren().addAll(
-                btnAccount, btnPasswords, btnSecureNotes, btnSettings,
+                btnAccount, btnPasswords, btnPasswordGenerator,
+                btnSecureNotes, btnSettings,
                 spacer, btnLogout
         );
+
+// Action handler:
+        btnPasswordGenerator.setOnAction(e -> showPasswordGeneratorPanel());
 
         // ── Content area ──────────────────────────────────────────────
         contentArea = new StackPane();
@@ -611,6 +617,50 @@ public class DashboardView extends Application {
             editing[0] = null;
         });
     }
+
+    // ── PASSWORD GENERATOR panel ────────────────────────────────────────────
+    private void showPasswordGeneratorPanel(){
+        VBox panel = new VBox(16);
+        panel.setPadding(new Insets(30, 40, 30, 40));
+        TextField generatedPwd = darkField("Click 'Generate Password'");
+        generatedPwd.setPrefWidth(300);
+        Button genBtn = redButton("Generate Password");
+        Button copyBtn = darkButton("Copy");
+
+        genBtn.setOnAction(e -> {
+            generatedPwd.setText(controller.generatePassword());
+            copyBtn.setText("Copy"); // resets text
+        });
+
+        copyBtn.setOnAction(e -> {
+            String pwd = generatedPwd.getText();
+            if (!pwd.isEmpty() && !pwd.equals("Click 'Generate Password'")) {
+                final Clipboard clipboard = Clipboard.getSystemClipboard();
+                final ClipboardContent content = new ClipboardContent();
+                content.putString(pwd);
+                clipboard.setContent(content);
+                copyBtn.setText("Copied!");
+                // Clear clipboard after 60 seconds for security
+                javafx.animation.PauseTransition clearClipboard =
+                        new javafx.animation.PauseTransition(javafx.util.Duration.minutes(1));
+                clearClipboard.setOnFinished(event -> clipboard.clear());
+                clearClipboard.play();
+                new java.util.Timer().schedule(new java.util.TimerTask() {
+                    @Override public void run() {
+                        javafx.application.Platform.runLater(() -> copyBtn.setText("Copy"));
+                    }
+                }, 2000);
+            }
+        });
+
+        panel.getChildren().addAll(
+                panelTitle("Password Generator"),
+                fieldLabel("Generate your password here:"),
+                generatedPwd, genBtn, copyBtn
+        );
+        contentArea.getChildren().setAll(panel);
+    }
+
     // ── SETTINGS panel ────────────────────────────────────────────────
     private void showSettingsPanel() {
         VBox panel = new VBox(16);
