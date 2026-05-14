@@ -438,7 +438,14 @@ public class DashboardView extends Application {
                 });
 
                 delBtn.setOnAction(e -> {
-                    masterData.remove(getTableView().getItems().get(getIndex()));
+                    PasswordEntry item = getTableView().getItems().get(getIndex());
+                    masterData.remove(item);
+
+                    controller.getSavedPasswords().removeIf(p ->
+                            p.getSiteName().equalsIgnoreCase(item.site.get()) &&
+                                    p.getUsername().equalsIgnoreCase(item.username.get())
+                    );
+
                     passwordRepository.saveAllPasswords(masterData.stream()
                             .map(p -> new Model.Password(p.site.get(), p.username.get(), p.password.get()))
                             .collect(java.util.stream.Collectors.toList()));

@@ -53,10 +53,9 @@ public class Validator {
         }
 
         for (Password item : passwords) {
-            boolean sameSite = item.getSiteName().equalsIgnoreCase(siteName.trim());
             boolean sameUsername = item.getUsername().equalsIgnoreCase(username.trim());
 
-            if (sameSite || sameUsername) {
+            if (sameUsername) {
                 return true;
             }
         }
